@@ -9,18 +9,18 @@ function makeGraphs(error, wjp_json, county_map_json) {
     var rate=wjp_json["rate"];
     var history=wjp_json["history"];
     var stocks=wjp_json["stocks"];
-    
+
     //parse date
     var dateFormat = d3.time.format("%Y-%m");
     history.forEach(function(t){
-	t["date"] = dateFormat.parse(t["date"]);
-	t["date"].setDate(1);
+      t["date"] = dateFormat.parse(t["date"]);
+      t["date"].setDate(1);
     });
 
     //history crossfilter
     var ndx = crossfilter(history);
     var date_dim = ndx.dimension(function(d) { return d["date"]; });
-    
+
     //range slider
     var minDate = date_dim.bottom(1)[0]["date"];
     var maxDate = date_dim.top(1)[0]["date"];
@@ -34,7 +34,7 @@ function makeGraphs(error, wjp_json, county_map_json) {
 	.formatNumber(d3.format("d"))
 	.valueAccessor(function(d){return d;})
 	.group(all);
-    
+
     predictionChartDiv
 	.width(600)
 	.height(160)
@@ -47,7 +47,7 @@ function makeGraphs(error, wjp_json, county_map_json) {
 	.xAxisLabel("Year")
 	.yAxis().ticks(4);
 
-    
+
 
     usMapSvg.width(1000)
 	.height(330)
