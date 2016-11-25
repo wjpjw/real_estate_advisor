@@ -1,0 +1,26 @@
+text {
+    font: 20px sans-serif;
+    text-anchor: middle;
+}
+
+.axis path, .axis line {
+    display: none;
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+.line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+}
+.counties {
+    fill: none;
+}
+
+.states {
+    fill: none;
+    stroke: #fff;
+    stroke-linejoin: round;
+}
