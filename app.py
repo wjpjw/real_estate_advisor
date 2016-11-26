@@ -11,9 +11,8 @@ def index():
 
 @app.route("/county/<id>")
 def countymap(id):
-    print id
     county={
-    "county": id,
+    "county": id+"wtf",  ## replace it with county name!
     "rate": 3,
     "stocks": ["s1", "s2", "s3", "s4", "s5"], 
     "history": [

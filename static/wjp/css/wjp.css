@@ -3,11 +3,16 @@ text {
     text-anchor: middle;
 }
 
-.axis path, .axis line {
+#counties .active {
+    stroke: orangered;
+    stroke-width: 2.5px;
+}
+
+.axis path,
+.axis line {
     display: none;
     fill: none;
     stroke: #000;
-    shape-rendering: crispEdges;
 }
 
 .line {
@@ -15,11 +20,12 @@ text {
     stroke: steelblue;
     stroke-width: 1.5px;
 }
-.counties {
+
+#counties {
     fill: none;
 }
 
-.states {
+#states {
     fill: none;
     stroke: #fff;
     stroke-linejoin: round;

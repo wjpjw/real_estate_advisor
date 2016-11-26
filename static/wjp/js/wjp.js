@@ -4,40 +4,23 @@ function inspect(msg, object) {
     console.log(msg + JSON.stringify(object, null, 4));
 }
 
-function show_county_info(county_id) {
-    queue().defer(d3.json, "/county/" + county_id).await(county_charts);
-}
-
 function clear(svg) {
     svg.selectAll("*").remove();
 }
 
-function county_charts(error, county_json) {
-    var county = county_json["county"];
-    var rate = county_json["rate"];
-    var history = county_json["history"];
-    var stocks = county_json["stocks"];
-    //parse date
-    var dateFormat = d3.time.format("%Y-%m");
-    history.forEach(function(t) {
-        t["date"] = dateFormat.parse(t["date"]);
-        t["date"].setDate(1);
-    });
-}
-
-
-function redraw_text(svg, data, func = function(d) { return d.name }) {
-    svg.data(data)
+function redraw_text(svg_text, data, func) {
+    svg_text.data(data)
         .transition()
-        .duration(1000)
+        .duration(200)
         .style("opacity", 0)
-        .transition().duration(500)
+        .transition().duration(120)
         .style("opacity", 1)
         .text(func)
 }
 
 function us_heatmap(error, county_map_json) {
-    var region_selected = [{ "id": 10, "name": "TestName" }];
+    //[1] region_svg init 
+    var region_selected = [{ "id": 10, "name": "---" }];
     var region_svg = d3.select("#region_svg");
     var region_svg_text = region_svg.append('text')
         .data(region_selected)
@@ -46,10 +29,26 @@ function us_heatmap(error, county_map_json) {
         .attr('fill', '#000')
         .style("font-size", "44px")
         .classed('region_selected', true)
-        .text(function(d) { return d.name })
+        .text(function(d) { return d.name; });
 
+    //[2] rating_svg init
+    var rating_selected = [0];
+    var rating_svg = d3.select("#rating_svg");
+    var rating_svg_text = rating_svg.append('text')
+        .data(rating_selected)
+        .attr('x', 100)
+        .attr('y', 60)
+        .attr('fill', '#000')
+        .style("font-size", "44px")
+        .classed('rating_selected', true)
+        .text(function(d) { return d; });
 
-    var heatmap_svg = d3.select("#usmap_svg");
+    //[3] usmap_svg
+    var heatmap_svg_width = 960,
+        heatmap_svg_height = 600,
+        heatmap_svg_centered;
+    var heatmap_svg = d3.select("#usmap_svg").attr("width", heatmap_svg_width).attr("height", heatmap_svg_height);
+
     var heatmap_path = d3.geoPath();
     var heatmap_linearscale = d3.scaleLinear().domain([1, 10]).rangeRound([600, 860]);
     var heatmap_color = d3.scaleThreshold().domain(d3.range(3, 9)).range(d3.schemeBlues[7]);
@@ -75,7 +74,7 @@ function us_heatmap(error, county_map_json) {
         .attr("fill", "#000")
         .attr("text-anchor", "start")
         .attr("font-weight", "bold")
-        .text("");
+        .text("Heat");
 
     heatmap_legend.call(d3.axisBottom(heatmap_linearscale)
             .tickSize(13)
@@ -84,23 +83,72 @@ function us_heatmap(error, county_map_json) {
         .select(".domain")
         .remove();
 
+    var heatmap_g = heatmap_svg.append("g");
 
-    heatmap_svg.append("g")
-        .attr("class", "counties")
+    heatmap_g.append("g")
+        .attr("id", "counties")
         .selectAll("path")
         .data(topojson.feature(county_map_json, county_map_json.objects.counties).features)
         .enter().append("path")
+        .on("click", function(d) {
+            show_county_info(d.id);
+            zoom_and_move(d);
+        })
         .attr("fill", function(d) { return heatmap_color(d.rate = d.id % 10); })
         .attr("d", heatmap_path)
         .append("title")
         .text(function(d) { return "Region ID:" + d.id + ", Rating:" + d.rate + "(/10)"; });
 
-    heatmap_svg.append("path")
+    heatmap_g.append("path")
         .datum(topojson.mesh(county_map_json, county_map_json.objects.states, function(a, b) { return a !== b; }))
-        .attr("class", "states")
+        .attr("id", "states")
         .attr("d", heatmap_path);
 
+    //zoom in and zoom out 
+    function zoom_and_move(d) {
+        var x, y, k;
+        if (d && heatmap_svg_centered !== d) {
+            var centroid = heatmap_path.centroid(d);
+            x = centroid[0];
+            y = centroid[1];
+            k = 4;
+            heatmap_svg_centered = d;
+        } else {
+            x = heatmap_svg_width / 2;
+            y = heatmap_svg_height / 2;
+            k = 1;
+            heatmap_svg_centered = null;
+        }
+        heatmap_g.selectAll("path").classed("active", heatmap_svg_centered && function(d) { return d === heatmap_svg_centered; });
+        heatmap_g.transition()
+            .duration(750)
+            .attr("transform", "translate(" + heatmap_svg_width / 2 + "," + heatmap_svg_height / 2 + ")scale(" + k + ")translate(" + -x + "," + -y + ")")
+            .style("stroke-width", 1.5 / k + "px");
+    }
 
-    show_county_info("01007");
+    //update county info on click, call /county/<id> api!
+    function show_county_info(county_id) {
+        queue().defer(d3.json, "/county/" + county_id).await(county_charts);
+    }
+    //update county info on click, draw charts and labels!
+    function county_charts(error, county_json) {
+        var county = county_json["county"]; //county name
+        var rate = +county_json["rate"];
+        var history = county_json["history"];
+        var stocks = county_json["stocks"];
+        //parse date
+        var dateFormat = d3.time.format("%Y-%m");
+        history.forEach(function(t) {
+            t["date"] = dateFormat.parse(t["date"]);
+            t["date"].setDate(1);
+        });
+        //region and rating
+        region_selected[0].name = county;
+        redraw_text(region_svg_text, region_selected, function(d) { return d.name; });
+        rating_selected[0] = rate;
+        redraw_text(rating_svg_text, rating_selected, function(d) { return d; });
+        //time chart
+
+    }
 
 }
