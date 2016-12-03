@@ -1,4 +1,4 @@
-queue().defer(d3.json, "https://d3js.org/us-10m.v1.json").await(us_heatmap);
+queue().defer(d3.json, "https://d3js.org/us-10m.v1.json").defer(d3.json,"http://localhost:5000/date").await(us_heatmap);
 
 function inspect(msg, object) {
     console.log(msg + JSON.stringify(object, null, 4));
@@ -18,7 +18,7 @@ function redraw_text(svg_text, data, func) {
         .text(func)
 }
 
-function us_heatmap(error, county_map_json) {
+function us_heatmap(error, county_map_json, all_price_json) {
     //[1] region_svg init 
     var region_selected = [{ "id": 10, "name": "---" }];
     var region_svg = d3.select("#region_svg");
@@ -45,10 +45,82 @@ function us_heatmap(error, county_map_json) {
 
     //[3] usmap_svg
     var heatmap_svg_width = 960,
-        heatmap_svg_height = 600,
+        heatmap_svg_height = 660,
         heatmap_svg_centered;
     var heatmap_svg = d3.select("#usmap_svg").attr("width", heatmap_svg_width).attr("height", heatmap_svg_height);
 
+
+//------------------------ Slider ------------------------
+//requires all_price_json
+var all_date_data=all_price_json["items"];
+str = JSON.stringify(all_date_data[0]["date"], null, 4); // (Optional) beautiful indented output.
+//console.log(str); // Logs output to dev tools console.
+
+
+var slider_svg = heatmap_svg,
+    slider_margin = {right: 50, left: 50},
+    slider_width = +slider_svg.attr("width") - slider_margin.left - slider_margin.right,
+    slider_height = +slider_svg.attr("height")+610;
+
+function generate_date(index){
+    return all_date_data[index].date; //index to date
+}
+var sliderx = d3.scaleLinear()
+    .domain([0, 10])
+    .range([0, slider_width])
+    .clamp(true);
+
+var slider = slider_svg.append("g")
+    .attr("class", "slider")
+    .attr("transform", "translate(" + slider_margin.left + "," + slider_height / 2 + ")");
+
+slider.append("line")
+    .attr("class", "track")
+    .attr("x1", sliderx.range()[0])
+    .attr("x2", sliderx.range()[1])
+  .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    .attr("class", "track-inset")
+  .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    .attr("class", "track-overlay")
+    .call(d3.drag()
+        .on("start.interrupt", function() { slider.interrupt(); })
+        .on("start drag", function() { hue(sliderx.invert(d3.event.x)); }));
+
+slider.insert("g", ".track-overlay")
+    .attr("class", "ticks")
+    .attr("transform", "translate(0," + 18 + ")")
+  .selectAll("text")
+  .data(sliderx.ticks(10))
+  .enter().append("text")
+    .attr("x", sliderx)
+    .attr("text-anchor", "middle")
+    .text(function(d) { return generate_date(d); });
+
+var handle = slider.insert("circle", ".track-overlay")
+    .attr("class", "handle")
+    .attr("r", 9);
+
+
+slider.transition() // Gratuitous intro!
+    .duration(750)
+    .tween("hue", function() {
+      var i = d3.interpolate(0, 20);
+      return function(t) { hue(i(t)); };
+    });
+
+function hue(h) {
+  handle.attr("cx", sliderx(h));
+  current_index=Math.ceil(h);   //index-related heatmap color
+  //update heatmap 
+  var hg=d3.select("#usmap_svg").selectAll("g").selectAll("path");
+  hg.style("fill",function(d) {   //to be done,
+                //console.log("w"+heatmap_color(current_index % 10)+","+current_index);
+                return heatmap_color(current_index % 10); });  
+
+  //slider_svg.style("background-color", d3.hsl(h, 0.8, 0.8));
+}
+
+//-----------------------------------------------
     var heatmap_path = d3.geoPath();
     var heatmap_linearscale = d3.scaleLinear().domain([1, 10]).rangeRound([600, 860]);
     var heatmap_color = d3.scaleThreshold().domain(d3.range(3, 9)).range(d3.schemeBlues[7]);
@@ -94,7 +166,7 @@ function us_heatmap(error, county_map_json) {
             show_county_info(d.id);
             zoom_and_move(d);
         })
-        .attr("fill", function(d) { return heatmap_color(d.rate = d.id % 10); }) //TBD!
+        .attr("fill", function(d) { return heatmap_color(d.rate = d.id % 10); }) //TBD
         .attr("d", heatmap_path)
         .append("title")
         .text(function(d) { return "Region ID:" + d.id + ", Rating:" + d.rate + "(/10)"; });
@@ -104,6 +176,9 @@ function us_heatmap(error, county_map_json) {
         .attr("id", "states")
         .attr("d", heatmap_path);
 
+
+    
+    
     //zoom in and zoom out 
     function zoom_and_move(d) {
         var x, y, k;
