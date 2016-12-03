@@ -1,6 +1,6 @@
 # real_estate_advisor
 
-1. pip install flask
+1. pip install Flask
 
 2. python app.py
 
