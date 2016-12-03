@@ -94,7 +94,7 @@ function us_heatmap(error, county_map_json) {
             show_county_info(d.id);
             zoom_and_move(d);
         })
-        .attr("fill", function(d) { return heatmap_color(d.rate = d.id % 10); })
+        .attr("fill", function(d) { return heatmap_color(d.rate = d.id % 10); }) //TBD!
         .attr("d", heatmap_path)
         .append("title")
         .text(function(d) { return "Region ID:" + d.id + ", Rating:" + d.rate + "(/10)"; });
@@ -148,7 +148,74 @@ function us_heatmap(error, county_map_json) {
         rating_selected[0] = rate;
         redraw_text(rating_svg_text, rating_selected, function(d) { return d; });
         //time chart
-
+        var data = [];
+        show_prediction_chart(history, data);
     }
 
+    function show_prediction_chart(history, data) {
+        var selectorOptions = {
+            buttons: [{
+                step: 'month',
+                stepmode: 'backward',
+                count: 1,
+                label: '1m'
+            }, {
+                step: 'month',
+                stepmode: 'backward',
+                count: 6,
+                label: '6m'
+            }, {
+                step: 'year',
+                stepmode: 'todate',
+                count: 1,
+                label: 'YTD'
+            }, {
+                step: 'year',
+                stepmode: 'backward',
+                count: 1,
+                label: '1y'
+            }, {
+                step: 'all',
+            }],
+        };
+        var layout = {
+            title: 'Historical Real Estate Price',
+            xaxis: {
+                rangeselector: selectorOptions,
+                rangeslider: {}
+            },
+            yaxis: {
+                fixedrange: true
+            }
+        };
+
+        data = [];
+        data.push(trace0_price(history));
+        for (i = 0; i < 5; i++) {
+            data.push(trace1_s1(history, i));
+        }
+        Plotly.newPlot('prediction_chart_div', data, layout);
+
+        function trace0_price(history) {
+            var x = [];
+            var y = [];
+            history.forEach(function(datum) {
+                x.push(datum["date"]);
+                y.push(datum["price"]);
+            });
+            return { x: x, y: y, mode: 'lines', type: 'scatter', name: 'price' };
+        }
+
+        function trace1_s1(history, index_) {
+            var x = [];
+            var y = [];
+            history.forEach(function(datum) {
+                x.push(datum["date"]);
+                y.push(datum["stocks"][index_]);
+            });
+            return { x: x, y: y, mode: 'lines', type: 'scatter', name: ("stock" + index_) };
+        }
+
+
+    }
 }
