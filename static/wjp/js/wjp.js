@@ -107,7 +107,7 @@ function us_heatmap(error, county_map_json, all_price_json) {
                 return element["price"];
             }
         }
-        return 233; //if county id doesn't match.
+        return 233; //if county id doesn't match. 
     }
 
     function hue(h) {
