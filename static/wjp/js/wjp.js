@@ -11,10 +11,10 @@ function clear(svg) {
 function redraw_text(svg_text, data, func) {
     svg_text.data(data)
         .transition()
-        .duration(40)
-        .style("opacity", 0)
-        .transition().duration(20)
-        .style("opacity", 1)
+        //.duration(10)
+        //.style("opacity", 0)
+        //.transition().duration(10)
+        //.style("opacity", 1)
         .text(func)
 }
 
@@ -48,6 +48,61 @@ function us_heatmap(error, county_map_json, all_price_json) {
         heatmap_svg_height = 660,
         heatmap_svg_centered;
     var heatmap_svg = d3.select("#usmap_svg").attr("width", heatmap_svg_width).attr("height", heatmap_svg_height);
+    //-----------------------------------------------
+    var heatmap_path = d3.geoPath();
+    var heatmap_linearscale = d3.scaleLinear().domain([1, 10]).rangeRound([600, 860]);
+    var heatmap_color = d3.scaleThreshold().domain(d3.range(3, 9)).range(d3.schemeBlues[7]);
+    var heatmap_legend = heatmap_svg.append("g").attr("class", "key").attr("transform", "translate(0,40)");
+
+    heatmap_legend.selectAll("rect")
+        .data(heatmap_color.range().map(function(d) {
+            d = heatmap_color.invertExtent(d);
+            if (d[0] == null) d[0] = heatmap_linearscale.domain()[0];
+            if (d[1] == null) d[1] = heatmap_linearscale.domain()[1];
+            return d;
+        }))
+        .enter().append("rect")
+        .attr("height", 8)
+        .attr("x", function(d) { return heatmap_linearscale(d[0]); })
+        .attr("width", function(d) { return heatmap_linearscale(d[1]) - heatmap_linearscale(d[0]); })
+        .attr("fill", function(d) { return heatmap_color(d[0]); });
+
+    heatmap_legend.append("text")
+        .attr("class", "caption")
+        .attr("x", heatmap_linearscale.range()[0])
+        .attr("y", -6)
+        .attr("fill", "#000")
+        .attr("text-anchor", "start")
+        .attr("font-weight", "bold")
+        .text("Heat");
+
+    heatmap_legend.call(d3.axisBottom(heatmap_linearscale)
+            .tickSize(13)
+            .tickFormat(function(x2, i) { return i ? x2 : x2 + "/10"; })
+            .tickValues(heatmap_color.domain()))
+        .select(".domain")
+        .remove();
+
+    var heatmap_g = heatmap_svg.append("g");
+
+    heatmap_g.append("g")
+        .attr("id", "counties")
+        .selectAll("path")
+        .data(topojson.feature(county_map_json, county_map_json.objects.counties).features)
+        .enter().append("path")
+        .on("click", function(d) {
+            show_county_info(d.id);
+            zoom_and_move(d);
+        })
+        //.attr("fill", function(d) { return heatmap_color(d.rate = 3 % 10); }) //TBD
+        .attr("d", heatmap_path)
+        .append("title")
+        .text(function(d) { return "Region ID:" + d.id + ", Rating:" + d.rate + "(/10)"; });
+
+    heatmap_g.append("path")
+        .datum(topojson.mesh(county_map_json, county_map_json.objects.states, function(a, b) { return a !== b; }))
+        .attr("id", "states")
+        .attr("d", heatmap_path);
 
     //------------------------ Slider ------------------------
     //requires all_price_json
@@ -62,7 +117,7 @@ function us_heatmap(error, county_map_json, all_price_json) {
         return all_date_data[index].date; //index to date
     }
     var sliderx = d3.scaleLinear()
-        .domain([0, 10])
+        .domain([0, 20])
         .range([0, slider_width])
         .clamp(true);
 
@@ -127,61 +182,6 @@ function us_heatmap(error, county_map_json, all_price_json) {
     }
 
 
-    //-----------------------------------------------
-    var heatmap_path = d3.geoPath();
-    var heatmap_linearscale = d3.scaleLinear().domain([1, 10]).rangeRound([600, 860]);
-    var heatmap_color = d3.scaleThreshold().domain(d3.range(3, 9)).range(d3.schemeBlues[7]);
-    var heatmap_legend = heatmap_svg.append("g").attr("class", "key").attr("transform", "translate(0,40)");
-
-    heatmap_legend.selectAll("rect")
-        .data(heatmap_color.range().map(function(d) {
-            d = heatmap_color.invertExtent(d);
-            if (d[0] == null) d[0] = heatmap_linearscale.domain()[0];
-            if (d[1] == null) d[1] = heatmap_linearscale.domain()[1];
-            return d;
-        }))
-        .enter().append("rect")
-        .attr("height", 8)
-        .attr("x", function(d) { return heatmap_linearscale(d[0]); })
-        .attr("width", function(d) { return heatmap_linearscale(d[1]) - heatmap_linearscale(d[0]); })
-        .attr("fill", function(d) { return heatmap_color(d[0]); });
-
-    heatmap_legend.append("text")
-        .attr("class", "caption")
-        .attr("x", heatmap_linearscale.range()[0])
-        .attr("y", -6)
-        .attr("fill", "#000")
-        .attr("text-anchor", "start")
-        .attr("font-weight", "bold")
-        .text("Heat");
-
-    heatmap_legend.call(d3.axisBottom(heatmap_linearscale)
-            .tickSize(13)
-            .tickFormat(function(x2, i) { return i ? x2 : x2 + "/10"; })
-            .tickValues(heatmap_color.domain()))
-        .select(".domain")
-        .remove();
-
-    var heatmap_g = heatmap_svg.append("g");
-
-    heatmap_g.append("g")
-        .attr("id", "counties")
-        .selectAll("path")
-        .data(topojson.feature(county_map_json, county_map_json.objects.counties).features)
-        .enter().append("path")
-        .on("click", function(d) {
-            show_county_info(d.id);
-            zoom_and_move(d);
-        })
-        //.attr("fill", function(d) { return heatmap_color(d.rate = 3 % 10); }) //TBD
-        .attr("d", heatmap_path)
-        .append("title")
-        .text(function(d) { return "Region ID:" + d.id + ", Rating:" + d.rate + "(/10)"; });
-
-    heatmap_g.append("path")
-        .datum(topojson.mesh(county_map_json, county_map_json.objects.states, function(a, b) { return a !== b; }))
-        .attr("id", "states")
-        .attr("d", heatmap_path);
 
     //------------------------date svg----------------------------------
     var date_selected = ["---"];
