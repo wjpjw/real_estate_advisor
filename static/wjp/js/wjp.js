@@ -169,7 +169,6 @@ function us_heatmap(error, county_map_json, all_price_json) {
         handle.attr("cx", sliderx(h));
         current_index = Math.floor(h); //index-related heatmap color
         //console.log("index:" + current_index);
-
         //[1]redraw date
         date_selected[0] = all_date_data[current_index]["date"];
         redraw_text(date_svg_text, date_selected, function(d) { return d; });
@@ -177,6 +176,11 @@ function us_heatmap(error, county_map_json, all_price_json) {
         var hg = d3.select("#usmap_svg").selectAll("g").selectAll("path").data(topojson.feature(county_map_json, county_map_json.objects.counties).features);
         hg.style("fill", function(d) { //to be done,
             var tmp = get_price_for(d.id, current_index);
+            tmp/=100;
+            console.log(tmp);
+            if(tmp>10){
+                tmp=10;
+            }
             return heatmap_color(tmp % 10);
         });
     }
