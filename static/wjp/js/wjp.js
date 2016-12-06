@@ -177,7 +177,6 @@ function us_heatmap(error, county_map_json, all_price_json) {
         hg.style("fill", function(d) { //to be done,
             var tmp = get_price_for(d.id, current_index);
             tmp/=100;
-            console.log(tmp);
             if(tmp>10){
                 tmp=10;
             }
