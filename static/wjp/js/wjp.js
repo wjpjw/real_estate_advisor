@@ -176,7 +176,15 @@ function us_heatmap(error, county_map_json, all_price_json) {
         var hg = d3.select("#usmap_svg").selectAll("g").selectAll("path").data(topojson.feature(county_map_json, county_map_json.objects.counties).features);
         hg.style("fill", function(d) { //to be done,
             var tmp = get_price_for(d.id, current_index);
-            tmp/=100;
+            if(tmp<40){
+                tmp=0;
+            }
+            else if(tmp>=40&&tmp<=100){
+                tmp=1;
+            }
+            else if(tmp>100&&tmp<1000){
+                tmp=Math.ceil((tmp+100)/200);
+            }
             if(tmp>10){
                 tmp=10;
             }
@@ -277,7 +285,6 @@ function us_heatmap(error, county_map_json, all_price_json) {
         .attr("dominant-baseline", "central")
         .attr("fill", "white")
         .text(function(d) { return d; })
-
 
     function updateButtonColors(button, parent) {
         parent.selectAll("rect").attr("fill", defaultColor)
